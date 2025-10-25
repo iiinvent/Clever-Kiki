@@ -12,18 +12,7 @@ def _chat_page_header() -> rx.Component:
             on_click=ChatState.go_back_and_clear_chat,
             class_name="flex items-center text-neutral-300 hover:text-neutral-100 bg-[#2A2B2E] hover:bg-[#3a3b3e] px-3 py-1.5 rounded-md text-sm font-medium",
         ),
-        rx.el.div(
-            rx.el.span("Model:", class_name="text-neutral-400 text-xs mr-2"),
-            rx.el.select(
-                rx.foreach(ChatState.model_options, lambda m: rx.el.option(m, value=m)),
-                value=ChatState.selected_model,
-                on_change=ChatState.set_selected_model,
-                class_name="bg-[#2A2B2E] border border-neutral-600 rounded-md text-xs text-neutral-200 focus:ring-1 focus:ring-[#E97055] focus:border-[#E97055]",
-                size="1",
-            ),
-            class_name="ml-auto flex items-center",
-        ),
-        class_name="sticky top-0 z-10 flex items-center justify-between p-3 bg-[#202123] border-b border-neutral-700 h-14 w-full",
+        class_name="sticky top-0 z-10 flex items-center justify-start p-3 bg-[#202123] border-b border-neutral-700 h-14 w-full",
     )
 
 
