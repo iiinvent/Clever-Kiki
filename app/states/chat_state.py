@@ -12,6 +12,8 @@ class Message(TypedDict):
     is_initial_greeting: Optional[bool]
     image_b64: Optional[str]
     tool_call_info: Optional[str]
+    tool_call_status: Optional[str]
+    tool_call_error: Optional[str]
 
 
 CLOUDFLARE_MODELS = {
@@ -183,7 +185,7 @@ class ChatState(rx.State):
 
     @rx.event(background=True)
     async def execute_tool_call(self, tool_call: dict):
-        from app.states.image_state import ImageGenerationState, GeneratedImage
+        from app.states.image_state import ImageGenerationState
         import time
 
         tool_name = tool_call.get("name")
@@ -192,25 +194,61 @@ class ChatState(rx.State):
         style = arguments.get("style", "photorealistic")
         if tool_name == "generate_image" and prompt:
             async with self:
-                self.messages[-1]["content"] = f"✨ Generating an image for: *{prompt}*"
-                self.messages[-1]["tool_call_info"] = (
-                    f"Tool: generate_image, Prompt: {prompt}, Style: {style}"
+                self.messages[-1]["content"] = (
+                    f"✨ Thinking... I should generate an image for: *{prompt}*"
                 )
+                self.messages[-1]["tool_call_info"] = (
+                    f"Tool: `generate_image` | Prompt: `{prompt}` | Style: `{style}`"
+                )
+                self.messages[-1]["tool_call_status"] = "loading"
+                self.messages[-1]["tool_call_error"] = None
             yield
-            async with self:
-                image_state = await self.get_state(ImageGenerationState)
-                image_b64 = await image_state._generate_image_from_prompt(prompt, style)
-                if image_b64:
-                    self.messages[-1]["image_b64"] = image_b64
-                    self.messages[-1]["content"] = "Here is the generated image:"
-                else:
-                    self.messages[-1]["content"] = (
-                        "Sorry, I couldn't generate the image."
-                    )
+            await self._run_image_generation(prompt, style)
         else:
             async with self:
                 self.messages[-1]["content"] = (
-                    "Sorry, I couldn't process the tool call."
+                    "Sorry, I received an invalid request to generate an image."
                 )
+                self.messages[-1]["tool_call_status"] = "error"
+                self.messages[-1]["tool_call_error"] = "Invalid tool call arguments."
+                self.is_streaming = False
+
+    @rx.event(background=True)
+    async def retry_image_generation(self):
+        last_message = self.messages[-1]
+        tool_info = last_message.get("tool_call_info", "")
+        if not tool_info or "Prompt:`" not in tool_info:
+            return
+        try:
+            prompt = tool_info.split("Prompt: `")[1].split("`")[0]
+            style = tool_info.split("Style: `")[1].split("`")[0]
+        except IndexError as e:
+            logging.exception(f"Error parsing tool_info: {e}")
+            return
         async with self:
+            self.messages[-1]["content"] = (
+                f"✨ Retrying image generation for: *{prompt}*"
+            )
+            self.messages[-1]["tool_call_status"] = "loading"
+            self.messages[-1]["tool_call_error"] = None
+            self.messages[-1]["image_b64"] = None
+        yield
+        await self._run_image_generation(prompt, style)
+
+    async def _run_image_generation(self, prompt: str, style: str):
+        from app.states.image_state import ImageGenerationState
+
+        image_state = await self.get_state(ImageGenerationState)
+        image_b64, error = await image_state._generate_image_from_prompt(prompt, style)
+        async with self:
+            if image_b64:
+                self.messages[-1]["image_b64"] = image_b64
+                self.messages[-1]["content"] = "Here is the generated image:"
+                self.messages[-1]["tool_call_status"] = "success"
+            else:
+                self.messages[-1]["content"] = "Sorry, I couldn't generate the image."
+                self.messages[-1]["tool_call_status"] = "error"
+                self.messages[-1]["tool_call_error"] = (
+                    error or "Unknown image generation failure."
+                )
             self.is_streaming = False

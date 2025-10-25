@@ -121,14 +121,17 @@ class ImageGenerationState(rx.State):
             async with self:
                 self.is_generating = False
 
-    async def _generate_image_from_prompt(self, prompt: str, style: str) -> str | None:
+    async def _generate_image_from_prompt(
+        self, prompt: str, style: str
+    ) -> tuple[str | None, str | None]:
         full_prompt = f"{prompt}, {style} style"
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
         gateway_id = os.getenv("CLOUDFLARE_AI_GATEWAY")
         token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
         if not all([account_id, gateway_id, token]):
-            logging.error("Image generation API credentials not configured.")
-            return None
+            error_msg = "API credentials not configured for image generation."
+            logging.error(error_msg)
+            return (None, error_msg)
         width, height = map(int, self.selected_size.split("x"))
         model_id = IMAGE_MODELS.get(self.selected_model)
         url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
@@ -144,7 +147,16 @@ class ImageGenerationState(rx.State):
                 url, headers=headers, json=data, timeout=120
             ) as response:
                 response.raise_for_status()
-                image_b64 = f"data:image/png;base64,{base64.b64encode(response.content).decode('utf-8')}"
+                content_type = response.headers.get("Content-Type", "")
+                if "image/png" in content_type:
+                    image_b64 = f"data:image/png;base64,{base64.b64encode(response.content).decode('utf-8')}"
+                elif "application/json" in content_type:
+                    json_response = response.json()
+                    image_b64 = (
+                        f"data:image/png;base64,{json_response['result']['image']}"
+                    )
+                else:
+                    raise Exception(f"Unexpected content type: {content_type}")
                 new_image = GeneratedImage(
                     prompt=full_prompt,
                     image_b64=image_b64,
@@ -152,11 +164,12 @@ class ImageGenerationState(rx.State):
                 )
                 async with self:
                     self.image_history.append(new_image)
-                return image_b64
+                return (image_b64, None)
         except requests.exceptions.RequestException as e:
+            error_msg = f"API Error: {e}"
             logging.exception(f"Image generation error from tool call: {e}")
+            return (None, error_msg)
         except Exception as e:
-            logging.exception(
-                f"An unexpected error occurred during image generation: {e}"
-            )
-        return None
+            error_msg = f"An unexpected error occurred: {e}"
+            logging.exception(error_msg)
+            return (None, error_msg)

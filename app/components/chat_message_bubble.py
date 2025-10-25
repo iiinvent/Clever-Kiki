@@ -22,6 +22,70 @@ def user_message_bubble(message_content: str) -> rx.Component:
     )
 
 
+def _tool_call_ui(message: Message) -> rx.Component:
+    status = message.get("tool_call_status")
+    return rx.el.div(
+        rx.cond(
+            message.get("tool_call_info") != None,
+            rx.el.div(
+                rx.el.div(
+                    rx.icon("bot", size=16, class_name="mr-2 text-neutral-400"),
+                    rx.el.p(
+                        message.get("tool_call_info"),
+                        class_name="text-xs text-neutral-400 font-mono",
+                    ),
+                    class_name="flex items-center",
+                ),
+                rx.cond(
+                    status == "error",
+                    rx.el.div(
+                        rx.el.p(
+                            message.get("tool_call_error"),
+                            class_name="text-xs text-red-400 mt-1",
+                        ),
+                        rx.el.button(
+                            "Retry Generation",
+                            rx.icon("refresh-cw", size=14, class_name="ml-2"),
+                            on_click=ChatState.retry_image_generation,
+                            class_name="mt-2 text-xs flex items-center px-2 py-1 bg-red-900/50 text-red-300 hover:bg-red-800/50 rounded-md",
+                        ),
+                        class_name="mt-2",
+                    ),
+                    None,
+                ),
+                class_name="bg-[#202123] p-2 rounded-md mt-3 border border-neutral-700",
+            ),
+            None,
+        ),
+        rx.cond(
+            status == "loading",
+            rx.el.div(
+                rx.icon(
+                    "loader-circle",
+                    class_name="animate-spin text-[#E97055] w-8 h-8 mx-auto",
+                ),
+                rx.el.p(
+                    "Generating image...",
+                    class_name="text-center text-sm text-neutral-400 mt-2",
+                ),
+                class_name="mt-3 p-4 bg-[#202123] rounded-lg",
+            ),
+            None,
+        ),
+        rx.cond(
+            message.get("image_b64") != None,
+            rx.el.div(
+                rx.el.img(
+                    src=message["image_b64"],
+                    class_name="rounded-lg mt-2 max-w-full h-auto",
+                ),
+                class_name="mt-2",
+            ),
+            None,
+        ),
+    )
+
+
 def ai_message_bubble(message: Message) -> rx.Component:
     is_initial = message["is_initial_greeting"]
     return rx.el.div(
@@ -46,17 +110,7 @@ def ai_message_bubble(message: Message) -> rx.Component:
                         "text-neutral-200 whitespace-pre-wrap break-words leading-relaxed",
                     ),
                 ),
-                rx.cond(
-                    message.get("image_b64") != None,
-                    rx.el.div(
-                        rx.el.img(
-                            src=message["image_b64"],
-                            class_name="rounded-lg mt-2 max-w-full h-auto",
-                        ),
-                        class_name="mt-2",
-                    ),
-                    None,
-                ),
+                _tool_call_ui(message),
                 rx.cond(
                     is_initial == False,
                     rx.el.div(
@@ -75,12 +129,6 @@ def ai_message_bubble(message: Message) -> rx.Component:
                                 "thumbs-down",
                                 size=18,
                                 class_name="text-neutral-400 hover:text-neutral-200 cursor-pointer p-1",
-                            ),
-                            rx.el.button(
-                                "Retry",
-                                rx.icon("chevron-down", size=16, class_name="ml-1"),
-                                type="button",
-                                class_name="flex items-center text-neutral-400 hover:text-neutral-200 bg-transparent p-1 text-sm font-medium",
                             ),
                             class_name="flex items-center space-x-2",
                         ),
