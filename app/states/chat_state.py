@@ -233,11 +233,10 @@ class ChatState(rx.State):
                 self.messages[-1]["content"] = f"An unexpected error occurred: {str(e)}"
                 self.error_message = str(e)
         finally:
+            async with self:
+                self.is_streaming = False
             if tool_call_dict:
                 yield ChatState.execute_tool_call(tool_call_dict)
-            else:
-                async with self:
-                    self.is_streaming = False
 
     @rx.event(background=True)
     async def execute_tool_call(self, tool_call: dict):
@@ -262,7 +261,6 @@ class ChatState(rx.State):
                     "Sorry, I received an invalid request to generate an image."
                 )
                 self.messages[-1]["tool_call_status"] = "error"
-                self.is_streaming = False
 
     async def _run_image_generation(self, prompt: str, style: str):
         from app.states.image_state import ImageGenerationState
@@ -279,4 +277,3 @@ class ChatState(rx.State):
                     f"Sorry, I couldn't generate the image. Reason: {error}"
                 )
                 self.messages[-1]["tool_call_status"] = "error"
-            self.is_streaming = False
