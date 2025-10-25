@@ -3,9 +3,7 @@ from app.states.chat_state import ChatState
 from app.components.header_section import header_section
 from app.components.greeting_section import greeting_section
 from app.components.input_section import input_section
-from app.components.suggestions_section import (
-    suggestions_section,
-)
+from app.components.suggestions_section import suggestions_section
 from app.pages.chat_page import chat_page
 
 
@@ -22,6 +20,8 @@ def index() -> rx.Component:
     )
 
 
+from app.pages.image_page import image_page
+
 app = rx.App(
     theme=rx.theme(appearance="light"),
     stylesheets=[
@@ -31,3 +31,4 @@ app = rx.App(
 )
 app.add_page(index)
 app.add_page(chat_page, route="/chat")
+app.add_page(image_page, route="/generate")
