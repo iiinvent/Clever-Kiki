@@ -74,7 +74,7 @@ class ImageGenerationState(rx.State):
             self.error_message = ""
         yield
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        token = os.getenv("CLOUDFLARE_AUTH_TOKEN")
+        token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
         if not all([account_id, token]):
             async with self:
                 self.error_message = "API credentials not configured."
@@ -129,7 +129,7 @@ class ImageGenerationState(rx.State):
     ) -> tuple[str | None, str | None]:
         full_prompt = f"{prompt}, {style} style"
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        token = os.getenv("CLOUDFLARE_AUTH_TOKEN")
+        token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
         if not all([account_id, token]):
             error_msg = "API credentials not configured for image generation."
             logging.error(error_msg)

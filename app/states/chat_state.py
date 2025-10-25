@@ -74,7 +74,7 @@ class ChatState(rx.State):
     @rx.event(background=True)
     async def stream_cloudflare_response(self):
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        token = os.getenv("CLOUDFLARE_AUTH_TOKEN")
+        token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
         if not all([account_id, token]):
             async with self:
                 self.messages[-1]["content"] = "Cloudflare credentials are not set."
