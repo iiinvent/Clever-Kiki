@@ -114,9 +114,9 @@ class ChatState(rx.State):
                                 async with self:
                                     if not self.is_streaming:
                                         break
-                                    current_content = self.messages[-1].get("content")
-                                    if current_content is None:
-                                        current_content = ""
+                                    current_content = (
+                                        self.messages[-1].get("content", "") or ""
+                                    )
                                     self.messages[-1]["content"] = (
                                         current_content + text_chunk
                                     )
