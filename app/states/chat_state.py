@@ -17,6 +17,7 @@ class Message(TypedDict):
 
 
 CLOUDFLARE_MODELS = {
+    "Hermes 2 Pro Mistral 7B": "@hf/nousresearch/hermes-2-pro-mistral-7b",
     "Llama 3.1 8B Instruct": "@cf/meta/llama-3.1-8b-instruct",
     "Llama 2 7B Chat": "@cf/meta/llama-2-7b-chat-int8",
     "Mistral 7B Instruct": "@cf/mistral/mistral-7b-instruct-v0.1",
@@ -26,7 +27,7 @@ CLOUDFLARE_MODELS = {
 class ChatState(rx.State):
     messages: list[Message] = []
     is_streaming: bool = False
-    selected_model: str = "Llama 3.1 8B Instruct"
+    selected_model: str = "Hermes 2 Pro Mistral 7B"
     error_message: str = ""
 
     @rx.var
