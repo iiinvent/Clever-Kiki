@@ -113,9 +113,16 @@ class ChatState(rx.State):
                 },
             }
         ]
-        system_prompt = """You are a helpful and friendly AI assistant. Engage naturally in conversation, answer questions, and assist with tasks.
+        system_prompt = """You are a helpful and friendly AI assistant. Always respond conversationally to the user.
 
-You have access to a generate_image tool. Use it ONLY when users explicitly request image generation (e.g., "generate an image of...", "create a picture of...", "draw me..."). For all other conversations, respond naturally without mentioning tools."""
+When users ask you to generate images (e.g., "generate an image of...", "create a picture of...", "draw me..."), you should:
+1. First acknowledge their request in a friendly way
+2. Use the generate_image tool with their requirements
+3. Let the tool handle the actual generation
+
+For all other conversations, just chat naturally and be helpful.
+
+Remember: Always talk to the user about what they said before taking any action."""
         api_messages = [{"role": "system", "content": system_prompt}] + [
             {"role": msg["role"], "content": msg["content"]}
             for msg in self.messages[:-1]
