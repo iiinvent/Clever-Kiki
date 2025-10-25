@@ -111,8 +111,8 @@ class ChatState(rx.State):
                         if line_str.startswith("data: "):
                             try:
                                 json_data = json.loads(line_str[6:])
-                                text_chunk = json_data.get("response", "")
-                                accumulated_content += text_chunk
+                                text_chunk = json_data.get("response")
+                                accumulated_content += text_chunk or ""
                                 async with self:
                                     if not self.is_streaming:
                                         break
