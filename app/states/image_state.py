@@ -15,14 +15,18 @@ class GeneratedImage(TypedDict):
 
 
 IMAGE_MODELS = {
+    "Stable Diffusion XL Base": "@cf/stabilityai/stable-diffusion-xl-base-1.0",
     "Stable Diffusion XL Lightning": "@cf/bytedance/stable-diffusion-xl-lightning",
     "Flux-1 Schnell": "@cf/black-forest-labs/flux-1-schnell",
+    "Phoenix-1.0": "@cf/leonardo/phoenix-1.0",
+    "Lucid-Origin": "@cf/leonardo/lucid-origin",
+    "Dreamshaper-8-LCM": "@cf/lykon/dreamshaper-8-lcm",
 }
 
 
 class ImageGenerationState(rx.State):
     is_generating: bool = False
-    selected_model: str = "Stable Diffusion XL Lightning"
+    selected_model: str = "Flux-1 Schnell"
     image_history: list[GeneratedImage] = []
     error_message: str = ""
     selected_style: str = "photorealistic"

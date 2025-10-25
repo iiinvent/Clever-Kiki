@@ -245,6 +245,7 @@ class ChatState(rx.State):
                 self.messages[-1]["tool_call_status"] = "loading"
                 self.messages[-1]["image_b64"] = None
                 image_state = await self.get_state(ImageGenerationState)
+                image_state.selected_model = "Flux-1 Schnell"
             image_b64, error = await image_state._generate_image_from_prompt(
                 prompt, style
             )
