@@ -234,7 +234,7 @@ class ChatState(rx.State):
                 self.error_message = str(e)
         finally:
             if tool_call_dict:
-                await self.execute_tool_call(tool_call_dict)
+                yield ChatState.execute_tool_call(tool_call_dict)
             else:
                 async with self:
                     self.is_streaming = False
