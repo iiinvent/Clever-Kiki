@@ -60,7 +60,7 @@ def chat_page() -> rx.Component:
                     rx.el.div(),
                 ),
                 rx.el.div(class_name="pb-4"),
-                class_name="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8",
+                class_name="w-full max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 flex flex-col space-y-4 sm:space-y-6",
             ),
             class_name="flex-grow overflow-y-auto",
         ),
