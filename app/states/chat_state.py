@@ -4,6 +4,7 @@ import os
 import requests
 import json
 import logging
+import ast
 
 
 class Message(TypedDict):
@@ -129,7 +130,9 @@ class ChatState(rx.State):
         ]
         data = {"messages": api_messages, "stream": True, "tools": tools}
         accumulated_content = ""
-        tool_calls = []
+        tool_call_dict = None
+        in_tool_call = False
+        tool_call_str = ""
         try:
             with requests.post(
                 url, headers=headers, json=data, stream=True, timeout=120
@@ -147,19 +150,38 @@ class ChatState(rx.State):
                                 if not isinstance(json_data, dict):
                                     continue
                                 if "response" in json_data:
-                                    text_chunk = json_data.get("response")
-                                    accumulated_content += text_chunk or ""
+                                    text_chunk = json_data.get("response", "")
+                                    if not text_chunk:
+                                        continue
+                                    if in_tool_call:
+                                        if "</tool_call>" in text_chunk:
+                                            in_tool_call = False
+                                            parts = text_chunk.split("</tool_call>", 1)
+                                            tool_call_str += parts[0]
+                                            try:
+                                                tool_call_dict = ast.literal_eval(
+                                                    tool_call_str.strip()
+                                                )
+                                            except Exception as e:
+                                                logging.exception(
+                                                    f"Failed to parse tool call with ast: {tool_call_str}"
+                                                )
+                                            break
+                                        else:
+                                            tool_call_str += text_chunk
+                                    elif "<tool_call>" in text_chunk:
+                                        in_tool_call = True
+                                        parts = text_chunk.split("<tool_call>", 1)
+                                        accumulated_content += parts[0]
+                                        tool_call_str += parts[1]
+                                    else:
+                                        accumulated_content += text_chunk
                                     async with self:
                                         if not self.is_streaming:
                                             break
                                         self.messages[-1]["content"] = (
                                             accumulated_content
                                         )
-                                elif "tool_calls" in json_data:
-                                    tool_calls = json_data.get("tool_calls", [])
-                                    async with self:
-                                        self.is_streaming = False
-                                    break
                             except json.JSONDecodeError:
                                 logging.exception(
                                     f"JSON Decode Error for line: {json_str}"
@@ -181,8 +203,8 @@ class ChatState(rx.State):
         finally:
             async with self:
                 self.is_streaming = False
-            if tool_calls:
-                yield ChatState.execute_tool_call(tool_calls[0])
+            if tool_call_dict:
+                yield ChatState.execute_tool_call(tool_call_dict)
 
     @rx.event(background=True)
     async def execute_tool_call(self, tool_call: dict):

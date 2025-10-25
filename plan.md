@@ -1,7 +1,7 @@
 # Cloudflare AI Gateway Integration Project
 
 ## Current Goal
-All phases complete! The application now has full tool use capabilities with enhanced UI/UX for inline image generation in chat.
+All phases complete! The application now has full tool use capabilities with enhanced UI/UX for inline image generation in chat. **Fixed tool call parsing bug.**
 
 ---
 
@@ -63,25 +63,29 @@ All phases complete! The application now has full tool use capabilities with enh
 - [x] Add retry/regenerate capability for failed image generations (retry button with error state)
 - [x] Implement error handling for tool execution failures (comprehensive error messages)
 - [x] Test edge cases (invalid tool calls, API timeouts, network errors)
+- [x] **Fix tool call parsing bug**: Update streaming logic to detect `<tool_call>` tags in response text instead of looking for `tool_calls` JSON key
+- [x] **Add Python dict format parsing**: Use `ast.literal_eval` as fallback for Cloudflare's single-quote dict format
 
 ---
 
 ## Notes
 - ✅ Using Cloudflare AI Gateway endpoint: `https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model}`
 - ✅ Environment variables configured: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_AI_GATEWAY, CLOUDFLARE_AI_GATEWAY_TOKEN
-- ✅ Working LLM models: Llama 3.1 8B Instruct, Llama 2 7B Chat, Mistral 7B Instruct
+- ✅ Working LLM models: Hermes 2 Pro Mistral 7B (function calling), Llama 3.1 8B Instruct, Llama 2 7B Chat, Mistral 7B Instruct
 - ✅ Streaming format: Server-Sent Events (SSE) with `data: {"response":"..."}\n\n` format
+- ✅ **Tool call format**: Cloudflare Workers AI returns tool calls as text with `<tool_call>...</tool_call>` XML-style tags containing Python dict (not JSON)
+- ✅ **Parsing strategy**: Detect tags in streaming chunks, accumulate tool call string, parse with `ast.literal_eval`
 - ✅ Working image models: Stable Diffusion XL Lightning (PNG binary), Flux-1 Schnell (JSON with base64)
 - ✅ Tool calling implemented with generate_image function
 - ✅ Chat messages support inline image display with image_b64 field
 - ✅ Tool use UI features: loading states, error handling, retry capability, tool call info display
-- ✅ **Project Complete**: All 6 phases successfully implemented and tested!
+- ✅ **Project Complete**: All 6 phases successfully implemented and tested with bug fix applied!
 
 ## Feature Summary
 **LLM Chat**:
-- Multiple model support (Llama 3.1, Llama 2, Mistral)
+- Multiple model support (Hermes 2 Pro for function calling, Llama 3.1, Llama 2, Mistral for standard chat)
 - Real-time streaming responses
-- Tool calling for automatic image generation
+- Tool calling for automatic image generation with `<tool_call>` tag detection
 
 **Image Generation**:
 - Dedicated image generation page with full controls
@@ -99,3 +103,4 @@ All phases complete! The application now has full tool use capabilities with enh
 - Error handling with descriptive messages
 - Retry button for failed generations
 - Smooth state transitions (loading → success/error)
+- **Fixed**: Proper parsing of Cloudflare's `<tool_call>` XML-style tags with Python dict format
