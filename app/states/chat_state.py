@@ -133,12 +133,15 @@ class ChatState(rx.State):
         tool_call_dict = None
         in_tool_call = False
         tool_call_str = ""
+        tool_call_completed = False
         try:
             with requests.post(
                 url, headers=headers, json=data, stream=True, timeout=120
             ) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
+                    if tool_call_completed:
+                        break
                     if line:
                         line_str = line.decode("utf-8")
                         if line_str.startswith("data: "):
@@ -162,6 +165,7 @@ class ChatState(rx.State):
                                                 tool_call_dict = ast.literal_eval(
                                                     tool_call_str.strip()
                                                 )
+                                                tool_call_completed = True
                                             except Exception as e:
                                                 logging.exception(
                                                     f"Failed to parse tool call with ast: {tool_call_str}"
