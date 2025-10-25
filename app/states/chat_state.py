@@ -208,13 +208,14 @@ class ChatState(rx.State):
             async with self:
                 self.is_streaming = False
             if tool_call_dict:
-                yield ChatState.execute_tool_call(tool_call_dict)
+                await self.execute_tool_call(tool_call_dict)
 
     @rx.event(background=True)
     async def execute_tool_call(self, tool_call: dict):
         from app.states.image_state import ImageGenerationState
         import time
 
+        logging.info(f"Executing tool call: {tool_call}")
         tool_name = tool_call.get("name")
         arguments = tool_call.get("arguments", {})
         prompt = arguments.get("prompt")
@@ -222,16 +223,16 @@ class ChatState(rx.State):
         if tool_name == "generate_image" and prompt:
             async with self:
                 self.messages[-1]["content"] = (
-                    f"✨ Thinking... I should generate an image for: *{prompt}*"
+                    f"\\[U+2728] Thinking... I should generate an image for: *{prompt}*"
                 )
                 self.messages[-1]["tool_call_info"] = (
                     f"Tool: `generate_image` | Prompt: `{prompt}` | Style: `{style}`"
                 )
                 self.messages[-1]["tool_call_status"] = "loading"
                 self.messages[-1]["tool_call_error"] = None
-            yield
             await self._run_image_generation(prompt, style)
         else:
+            logging.error(f"Invalid tool call received: {tool_call}")
             async with self:
                 self.messages[-1]["content"] = (
                     "Sorry, I received an invalid request to generate an image."
@@ -259,7 +260,6 @@ class ChatState(rx.State):
             self.messages[-1]["tool_call_status"] = "loading"
             self.messages[-1]["tool_call_error"] = None
             self.messages[-1]["image_b64"] = None
-        yield
         await self._run_image_generation(prompt, style)
 
     async def _run_image_generation(self, prompt: str, style: str):
