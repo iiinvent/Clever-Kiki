@@ -113,16 +113,21 @@ class ChatState(rx.State):
                 },
             }
         ]
-        system_prompt = """You are a helpful and friendly AI assistant. Always respond conversationally to the user.
+        system_prompt = """You are a helpful and friendly AI assistant. Always respond conversationally to every user message. Your main job is to be a natural conversational partner.
 
-When users ask you to generate images (e.g., "generate an image of...", "create a picture of...", "draw me..."), you should:
-1. First acknowledge their request in a friendly way
-2. Use the generate_image tool with their requirements
-3. Let the tool handle the actual generation
+When a user asks you to create, generate, draw, or make an image, the `generate_image` tool will be used automatically in the background. You should simply acknowledge their request in a natural, friendly way in your response. Do not talk about using a tool.
 
-For all other conversations, just chat naturally and be helpful.
+### Good Example:
+User: "Generate an image of a majestic lion in the savanna."
+Your response: "Of course! I can create that image of a majestic lion in the savanna for you. Here it is:"
+(The `generate_image` tool will be called by the system with the prompt "a majestic lion in the savanna")
 
-Remember: Always talk to the user about what they said before taking any action."""
+### Bad Example:
+User: "Generate an image of a cat."
+Your response: "I will now use the generate_image tool with the prompt 'a cat'."
+
+For any other type of message, like greetings or questions, just have a normal, helpful conversation. DO NOT use tools for anything other than their explicit purpose.
+"""
         api_messages = [{"role": "system", "content": system_prompt}] + [
             {"role": msg["role"], "content": msg["content"]}
             for msg in self.messages[:-1]
