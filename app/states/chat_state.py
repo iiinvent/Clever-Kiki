@@ -109,8 +109,13 @@ class ChatState(rx.State):
                     if line:
                         line_str = line.decode("utf-8")
                         if line_str.startswith("data: "):
+                            json_str = line_str[6:].strip()
+                            if not json_str or json_str == "[DONE]":
+                                continue
                             try:
-                                json_data = json.loads(line_str[6:])
+                                json_data = json.loads(json_str)
+                                if not isinstance(json_data, dict):
+                                    continue
                                 text_chunk = json_data.get("response")
                                 accumulated_content += text_chunk or ""
                                 async with self:
@@ -118,7 +123,9 @@ class ChatState(rx.State):
                                         break
                                     self.messages[-1]["content"] = accumulated_content
                             except json.JSONDecodeError as e:
-                                logging.exception(f"Error decoding JSON: {e}")
+                                logging.exception(
+                                    f"JSON Decode Error for line: {json_str}"
+                                )
                                 continue
         except requests.exceptions.RequestException as e:
             logging.exception(f"Error: {e}")
