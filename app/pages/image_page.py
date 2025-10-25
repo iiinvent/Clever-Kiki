@@ -34,12 +34,17 @@ def _image_page_header() -> rx.Component:
 def image_page() -> rx.Component:
     return rx.el.div(
         _image_page_header(),
-        rx.el.main(
-            image_prompt_section(),
-            rx.el.div(class_name="h-12"),
-            image_display(),
-            image_history(),
-            class_name="flex flex-col items-center w-full px-4 space-y-6 pt-8 pb-16",
+        rx.el.div(
+            rx.el.div(
+                image_prompt_section(),
+                class_name="w-full lg:w-2/5 xl:w-1/3 flex-shrink-0 lg:pr-8",
+            ),
+            rx.el.div(
+                image_display(),
+                image_history(),
+                class_name="w-full lg:w-3/5 xl:w-2/3 flex-shrink-0 lg:overflow-y-auto lg:pl-8",
+            ),
+            class_name="flex flex-col lg:flex-row w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-56px)]",
         ),
-        class_name="bg-[#202123] min-h-screen flex flex-col items-center text-neutral-200 font-['Inter'] selection:bg-[#E97055] selection:text-white",
+        class_name="bg-[#202123] min-h-screen flex flex-col text-neutral-200 font-['Inter'] selection:bg-[#E97055] selection:text-white",
     )

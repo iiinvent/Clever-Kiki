@@ -25,6 +25,28 @@ class ImageGenerationState(rx.State):
     selected_model: str = "Stable Diffusion XL Lightning"
     image_history: list[GeneratedImage] = []
     error_message: str = ""
+    selected_style: str = "photorealistic"
+    selected_size: str = "1024x1024"
+    quality_steps: int = 20
+
+    @rx.var
+    def styles(self) -> list[dict[str, str]]:
+        return [
+            {"name": "photorealistic", "label": "Photorealistic", "icon": "camera"},
+            {"name": "anime", "label": "Anime", "icon": "swords"},
+            {"name": "digital-art", "label": "Digital Art", "icon": "paintbrush-2"},
+            {"name": "oil-painting", "label": "Oil Painting", "icon": "palette"},
+            {"name": "watercolor", "label": "Watercolor", "icon": "paint-bucket"},
+            {"name": "sketch", "label": "Sketch", "icon": "pencil"},
+        ]
+
+    @rx.var
+    def sizes(self) -> list[dict[str, str]]:
+        return [
+            {"value": "1024x1024", "label": "Square"},
+            {"value": "1024x768", "label": "Landscape"},
+            {"value": "768x1024", "label": "Portrait"},
+        ]
 
     @rx.var
     def model_options(self) -> list[str]:
@@ -38,11 +60,12 @@ class ImageGenerationState(rx.State):
 
     @rx.event(background=True)
     async def generate_image(self, form_data: dict):
-        prompt = form_data.get("prompt", "").strip()
-        if not prompt:
-            yield rx.toast("Please enter a prompt.", duration=3000)
-            return
         async with self:
+            prompt = form_data.get("prompt", "").strip()
+            if not prompt:
+                yield rx.toast("Please enter a prompt.", duration=3000)
+                return
+            full_prompt = f"{prompt}, {self.selected_style} style"
             self.is_generating = True
             self.error_message = ""
         yield
@@ -54,10 +77,16 @@ class ImageGenerationState(rx.State):
                 self.error_message = "API credentials not configured."
                 self.is_generating = False
             return
+        width, height = map(int, self.selected_size.split("x"))
         model_id = IMAGE_MODELS.get(self.selected_model)
         url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
         headers = {"Authorization": f"Bearer {token}"}
-        data = {"prompt": prompt}
+        data = {
+            "prompt": full_prompt,
+            "num_steps": self.quality_steps,
+            "width": width,
+            "height": height,
+        }
         try:
             with requests.post(
                 url, headers=headers, json=data, timeout=120
@@ -74,7 +103,9 @@ class ImageGenerationState(rx.State):
                 else:
                     raise Exception(f"Unexpected content type: {content_type}")
                 new_image = GeneratedImage(
-                    prompt=prompt, image_b64=image_b64, timestamp=str(int(time.time()))
+                    prompt=full_prompt,
+                    image_b64=image_b64,
+                    timestamp=str(int(time.time())),
                 )
                 async with self:
                     self.image_history.append(new_image)

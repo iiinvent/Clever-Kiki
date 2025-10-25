@@ -43,5 +43,5 @@ def image_display() -> rx.Component:
                 ),
             ),
         ),
-        class_name="w-full max-w-xl mx-auto",
+        class_name="w-full mb-12",
     )

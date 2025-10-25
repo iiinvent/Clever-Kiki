@@ -25,12 +25,12 @@ def image_history() -> rx.Component:
                 rx.foreach(
                     ImageGenerationState.image_history.reverse(), image_history_item
                 ),
-                class_name="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4",
+                class_name="grid grid-cols-2 md:grid-cols-3 gap-4",
             ),
             rx.el.p(
-                "No images generated yet.",
+                "Your generated images will appear here.",
                 class_name="text-neutral-500 text-center py-4",
             ),
         ),
-        class_name="w-full max-w-5xl mx-auto mt-12",
+        class_name="w-full",
     )
