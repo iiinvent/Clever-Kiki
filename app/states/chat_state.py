@@ -180,12 +180,13 @@ class ChatState(rx.State):
                                         tool_call_str += parts[1]
                                     else:
                                         accumulated_content += text_chunk
-                                    async with self:
-                                        if not self.is_streaming:
-                                            break
-                                        self.messages[-1]["content"] = (
-                                            accumulated_content
-                                        )
+                                    if not in_tool_call:
+                                        async with self:
+                                            if not self.is_streaming:
+                                                break
+                                            self.messages[-1]["content"] = (
+                                                accumulated_content
+                                            )
                             except json.JSONDecodeError:
                                 logging.exception(
                                     f"JSON Decode Error for line: {json_str}"
@@ -205,10 +206,11 @@ class ChatState(rx.State):
                 self.messages[-1]["content"] = f"An unexpected error occurred: {str(e)}"
                 self.error_message = str(e)
         finally:
-            async with self:
-                self.is_streaming = False
             if tool_call_dict:
                 await self.execute_tool_call(tool_call_dict)
+            else:
+                async with self:
+                    self.is_streaming = False
 
     @rx.event(background=True)
     async def execute_tool_call(self, tool_call: dict):
@@ -222,14 +224,9 @@ class ChatState(rx.State):
         style = arguments.get("style", "photorealistic")
         if tool_name == "generate_image" and prompt:
             async with self:
-                self.messages[-1]["content"] = (
-                    f"\\[U+2728] Thinking... I should generate an image for: *{prompt}*"
-                )
-                self.messages[-1]["tool_call_info"] = (
-                    f"Tool: `generate_image` | Prompt: `{prompt}` | Style: `{style}`"
-                )
+                self.messages[-1]["content"] = ""
                 self.messages[-1]["tool_call_status"] = "loading"
-                self.messages[-1]["tool_call_error"] = None
+                self.messages[-1]["image_b64"] = None
             await self._run_image_generation(prompt, style)
         else:
             logging.error(f"Invalid tool call received: {tool_call}")
@@ -238,29 +235,7 @@ class ChatState(rx.State):
                     "Sorry, I received an invalid request to generate an image."
                 )
                 self.messages[-1]["tool_call_status"] = "error"
-                self.messages[-1]["tool_call_error"] = "Invalid tool call arguments."
                 self.is_streaming = False
-
-    @rx.event(background=True)
-    async def retry_image_generation(self):
-        last_message = self.messages[-1]
-        tool_info = last_message.get("tool_call_info", "")
-        if not tool_info or "Prompt:`" not in tool_info:
-            return
-        try:
-            prompt = tool_info.split("Prompt: `")[1].split("`")[0]
-            style = tool_info.split("Style: `")[1].split("`")[0]
-        except IndexError as e:
-            logging.exception(f"Error parsing tool_info: {e}")
-            return
-        async with self:
-            self.messages[-1]["content"] = (
-                f"✨ Retrying image generation for: *{prompt}*"
-            )
-            self.messages[-1]["tool_call_status"] = "loading"
-            self.messages[-1]["tool_call_error"] = None
-            self.messages[-1]["image_b64"] = None
-        await self._run_image_generation(prompt, style)
 
     async def _run_image_generation(self, prompt: str, style: str):
         from app.states.image_state import ImageGenerationState
@@ -273,9 +248,8 @@ class ChatState(rx.State):
                 self.messages[-1]["content"] = "Here is the generated image:"
                 self.messages[-1]["tool_call_status"] = "success"
             else:
-                self.messages[-1]["content"] = "Sorry, I couldn't generate the image."
-                self.messages[-1]["tool_call_status"] = "error"
-                self.messages[-1]["tool_call_error"] = (
-                    error or "Unknown image generation failure."
+                self.messages[-1]["content"] = (
+                    f"Sorry, I couldn't generate the image. Reason: {error}"
                 )
+                self.messages[-1]["tool_call_status"] = "error"
             self.is_streaming = False

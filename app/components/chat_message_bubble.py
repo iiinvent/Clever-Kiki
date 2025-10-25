@@ -23,66 +23,27 @@ def user_message_bubble(message_content: str) -> rx.Component:
 
 
 def _tool_call_ui(message: Message) -> rx.Component:
-    status = message.get("tool_call_status")
     return rx.el.div(
         rx.cond(
-            message.get("tool_call_info") != None,
-            rx.el.div(
-                rx.el.div(
-                    rx.icon("bot", size=16, class_name="mr-2 text-neutral-400"),
-                    rx.el.p(
-                        message.get("tool_call_info"),
-                        class_name="text-xs text-neutral-400 font-mono",
-                    ),
-                    class_name="flex items-center",
-                ),
-                rx.cond(
-                    status == "error",
-                    rx.el.div(
-                        rx.el.p(
-                            message.get("tool_call_error"),
-                            class_name="text-xs text-red-400 mt-1",
-                        ),
-                        rx.el.button(
-                            "Retry Generation",
-                            rx.icon("refresh-cw", size=14, class_name="ml-2"),
-                            on_click=ChatState.retry_image_generation,
-                            class_name="mt-2 text-xs flex items-center px-2 py-1 bg-red-900/50 text-red-300 hover:bg-red-800/50 rounded-md",
-                        ),
-                        class_name="mt-2",
-                    ),
-                    None,
-                ),
-                class_name="bg-[#202123] p-2 rounded-md mt-3 border border-neutral-700",
-            ),
-            None,
-        ),
-        rx.cond(
-            status == "loading",
+            message.get("tool_call_status") == "loading",
             rx.el.div(
                 rx.icon(
-                    "loader-circle",
-                    class_name="animate-spin text-[#E97055] w-8 h-8 mx-auto",
+                    "loader-circle", class_name="animate-spin text-[#E97055] w-6 h-6"
                 ),
-                rx.el.p(
-                    "Generating image...",
-                    class_name="text-center text-sm text-neutral-400 mt-2",
-                ),
-                class_name="mt-3 p-4 bg-[#202123] rounded-lg",
+                class_name="mt-3 p-4 flex justify-center items-center",
             ),
-            None,
-        ),
-        rx.cond(
-            message.get("image_b64") != None,
-            rx.el.div(
-                rx.el.img(
-                    src=message["image_b64"],
-                    class_name="rounded-lg mt-2 max-w-full h-auto",
+            rx.cond(
+                message.get("image_b64") != None,
+                rx.el.div(
+                    rx.el.img(
+                        src=message["image_b64"],
+                        class_name="rounded-lg mt-2 max-w-full h-auto",
+                    ),
+                    class_name="mt-2",
                 ),
-                class_name="mt-2",
+                None,
             ),
-            None,
-        ),
+        )
     )
 
 
