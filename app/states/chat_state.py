@@ -17,13 +17,13 @@ class Message(TypedDict):
     tool_call_error: Optional[str]
 
 
-CLOUDFLARE_MODELS = {"GPT-OSS-20B": "@cf/openai/gpt-oss-20b"}
+CLOUDFLARE_MODELS = {"Llama-3.1-70B-Instruct": "@cf/meta/llama-3.1-70b-instruct"}
 
 
 class ChatState(rx.State):
     messages: list[Message] = []
     is_streaming: bool = False
-    selected_model: str = "GPT-OSS-20B"
+    selected_model: str = "Llama-3.1-70B-Instruct"
     error_message: str = ""
 
     @rx.event
