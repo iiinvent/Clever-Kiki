@@ -148,6 +148,26 @@ class ChatState(rx.State):
                                     if not text_chunk:
                                         continue
                                     accumulated_content += text_chunk
+                                    try:
+                                        if (
+                                            '"name"' in accumulated_content
+                                            and '"parameters"' in accumulated_content
+                                        ):
+                                            potential_tool_call = ast.literal_eval(
+                                                accumulated_content.strip()
+                                            )
+                                            if (
+                                                isinstance(potential_tool_call, dict)
+                                                and "name" in potential_tool_call
+                                            ):
+                                                tool_call_dict = potential_tool_call
+                                                tool_call_completed = True
+                                                accumulated_content = ""
+                                                break
+                                    except (ValueError, SyntaxError) as e:
+                                        logging.exception(
+                                            f"Error parsing potential tool call: {e}"
+                                        )
                                     if "<tool_call>" in accumulated_content and (
                                         not in_tool_call
                                     ):
@@ -198,7 +218,7 @@ class ChatState(rx.State):
                                                     "tool_call_status"
                                                 ] = "error"
                                         break
-                                    if not in_tool_call:
+                                    if not in_tool_call and (not tool_call_completed):
                                         async with self:
                                             if not self.is_streaming:
                                                 break
@@ -226,7 +246,21 @@ class ChatState(rx.State):
         finally:
             async with self:
                 self.is_streaming = False
-        if tool_call_dict:
+        if (
+            not tool_call_dict
+            and '"name"' in accumulated_content
+            and ('"parameters"' in accumulated_content)
+        ):
+            try:
+                tool_call_dict = ast.literal_eval(accumulated_content.strip())
+            except (ValueError, SyntaxError) as e:
+                logging.exception(f"Final tool call parse failed: {e}")
+                tool_call_dict = None
+        if (
+            tool_call_dict
+            and isinstance(tool_call_dict, dict)
+            and ("name" in tool_call_dict)
+        ):
             yield ChatState.execute_tool_call(tool_call_dict)
 
     @rx.event(background=True)
