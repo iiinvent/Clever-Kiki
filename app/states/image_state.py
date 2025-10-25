@@ -74,16 +74,15 @@ class ImageGenerationState(rx.State):
             self.error_message = ""
         yield
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        gateway_id = os.getenv("CLOUDFLARE_AI_GATEWAY")
-        token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
-        if not all([account_id, gateway_id, token]):
+        token = os.getenv("CLOUDFLARE_AUTH_TOKEN")
+        if not all([account_id, token]):
             async with self:
                 self.error_message = "API credentials not configured."
                 self.is_generating = False
             return
         width, height = map(int, self.selected_size.split("x"))
         model_id = IMAGE_MODELS.get(self.selected_model)
-        url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
+        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model_id}"
         headers = {"Authorization": f"Bearer {token}"}
         data = {
             "prompt": full_prompt,
@@ -130,15 +129,14 @@ class ImageGenerationState(rx.State):
     ) -> tuple[str | None, str | None]:
         full_prompt = f"{prompt}, {style} style"
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        gateway_id = os.getenv("CLOUDFLARE_AI_GATEWAY")
-        token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
-        if not all([account_id, gateway_id, token]):
+        token = os.getenv("CLOUDFLARE_AUTH_TOKEN")
+        if not all([account_id, token]):
             error_msg = "API credentials not configured for image generation."
             logging.error(error_msg)
             return (None, error_msg)
         width, height = map(int, self.selected_size.split("x"))
         model_id = IMAGE_MODELS.get(self.selected_model)
-        url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
+        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model_id}"
         headers = {"Authorization": f"Bearer {token}"}
         data = {
             "prompt": full_prompt,

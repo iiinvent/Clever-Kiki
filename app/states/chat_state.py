@@ -74,9 +74,8 @@ class ChatState(rx.State):
     @rx.event(background=True)
     async def stream_cloudflare_response(self):
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-        gateway_id = os.getenv("CLOUDFLARE_AI_GATEWAY")
-        token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
-        if not all([account_id, gateway_id, token]):
+        token = os.getenv("CLOUDFLARE_AUTH_TOKEN")
+        if not all([account_id, token]):
             async with self:
                 self.messages[-1]["content"] = "Cloudflare credentials are not set."
                 self.is_streaming = False
@@ -89,8 +88,7 @@ class ChatState(rx.State):
                 self.is_streaming = False
                 self.error_message = "Invalid model."
             return
-        prompt = self.messages[-2]["content"]
-        url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
+        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model_id}"
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
@@ -116,6 +114,8 @@ class ChatState(rx.State):
             }
         ]
         api_messages = [
+            {"role": "system", "content": "You are a friendly assistant"}
+        ] + [
             {"role": msg["role"], "content": msg["content"]}
             for msg in self.messages[:-1]
         ]
