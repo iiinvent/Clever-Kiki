@@ -120,3 +120,43 @@ class ImageGenerationState(rx.State):
         finally:
             async with self:
                 self.is_generating = False
+
+    async def _generate_image_from_prompt(self, prompt: str, style: str) -> str | None:
+        full_prompt = f"{prompt}, {style} style"
+        account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+        gateway_id = os.getenv("CLOUDFLARE_AI_GATEWAY")
+        token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
+        if not all([account_id, gateway_id, token]):
+            logging.error("Image generation API credentials not configured.")
+            return None
+        width, height = map(int, self.selected_size.split("x"))
+        model_id = IMAGE_MODELS.get(self.selected_model)
+        url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
+        headers = {"Authorization": f"Bearer {token}"}
+        data = {
+            "prompt": full_prompt,
+            "num_steps": 20,
+            "width": width,
+            "height": height,
+        }
+        try:
+            with requests.post(
+                url, headers=headers, json=data, timeout=120
+            ) as response:
+                response.raise_for_status()
+                image_b64 = f"data:image/png;base64,{base64.b64encode(response.content).decode('utf-8')}"
+                new_image = GeneratedImage(
+                    prompt=full_prompt,
+                    image_b64=image_b64,
+                    timestamp=str(int(time.time())),
+                )
+                async with self:
+                    self.image_history.append(new_image)
+                return image_b64
+        except requests.exceptions.RequestException as e:
+            logging.exception(f"Image generation error from tool call: {e}")
+        except Exception as e:
+            logging.exception(
+                f"An unexpected error occurred during image generation: {e}"
+            )
+        return None

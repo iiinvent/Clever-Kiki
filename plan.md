@@ -1,7 +1,7 @@
 # Cloudflare AI Gateway Integration Project
 
 ## Current Goal
-Integrate Cloudflare AI Gateway for LLM chat completions and add image generation capabilities with multiple model options.
+Enable inline image generation in chat conversations using LLM tool calling to automatically generate and display images based on chat context.
 
 ---
 
@@ -11,8 +11,6 @@ Integrate Cloudflare AI Gateway for LLM chat completions and add image generatio
 - [x] Add model selection UI component in chat page header (dropdown selector)
 - [x] Update streaming logic to work with Cloudflare Workers AI SSE streaming format
 - [x] Test LLM chat completions with different models (all 3 models tested successfully)
-
-**Completed**: Successfully integrated Cloudflare AI Gateway with Workers AI models. Users can now select from 3 different LLM models (Llama 3.1 8B Instruct, Llama 2 7B Chat, Mistral 7B Instruct) and chat with streaming responses.
 
 ---
 
@@ -24,8 +22,6 @@ Integrate Cloudflare AI Gateway for LLM chat completions and add image generatio
 - [x] Add image generation page/section with prompt input and model selector
 - [x] Test image generation with multiple models (both models tested successfully)
 
-**Completed**: Successfully implemented image generation with Cloudflare Workers AI. Users can generate images using Stable Diffusion XL Lightning (returns PNG) or Flux-1 Schnell (returns JSON with base64). Images are displayed with download buttons and stored in history.
-
 ---
 
 ## Phase 3: Enhanced UI for Image Gallery ✅
@@ -35,8 +31,6 @@ Integrate Cloudflare AI Gateway for LLM chat completions and add image generatio
 - [x] Add image regeneration with same/modified prompts (user can enter new prompts)
 - [x] Add navigation between chat and image generation features (back button and suggestion chip)
 - [x] Test complete user flow for chat and image generation
-
-**Completed**: Image gallery features were already implemented during Phase 2. The image generation page includes a history grid that displays all generated images with their prompts, a responsive grid layout, and navigation between home/chat/image pages.
 
 ---
 
@@ -51,18 +45,24 @@ Integrate Cloudflare AI Gateway for LLM chat completions and add image generatio
 - [x] Fix JSON decoding error caused by empty arrays in SSE stream
 - [x] Add type validation to ensure parsed JSON is a dict before accessing
 
-**Completed**: Successfully fixed all streaming errors including JSON parsing issues.
+---
 
-**Key improvements:**
-- Accumulator pattern: Chunks are accumulated in a local variable before updating state
-- Atomic updates: Message content is set in one operation within `async with self:` blocks
-- Null safety: Added `text_chunk or ""` pattern to convert None to empty string before concatenation
-- **JSON parsing robustness**: Added `.strip()` to remove whitespace, check for empty/[DONE] markers, and validate JSON is a dict
-- **Type validation**: Added `isinstance(json_data, dict)` check before calling `.get()` to handle arrays like `[]`
-- Better error handling: `continue` on JSON errors instead of breaking the stream
-- Simplified logic: Removed complex nested state access patterns
+## Phase 5: Tool Use for Inline Image Generation ✅
+- [x] Add tool/function definitions to chat API requests (image_generation tool)
+- [x] Update Message TypedDict to support image content alongside text
+- [x] Modify streaming logic to detect and handle tool_calls in LLM responses
+- [x] Implement tool execution handler that calls image generation API
+- [x] Update chat message bubble component to display inline images
+- [x] Test complete flow: chat → tool call → image generation → display in chat
 
-**Root cause fixed**: Cloudflare AI Gateway occasionally sends `data: []` (empty arrays) in the SSE stream, which when parsed becomes a Python list, not a dict. This caused the "Expecting value: line 1 column 2 (char 1)" error. The fix validates JSON type before accessing dict methods.
+---
+
+## Phase 6: Enhanced Tool Use UI
+- [ ] Add visual indicators for tool use (loading state for image generation)
+- [ ] Display tool call reasoning/context in chat bubble
+- [ ] Add retry/regenerate capability for failed image generations
+- [ ] Implement error handling for tool execution failures
+- [ ] Test edge cases (multiple tools, failed generations, network errors)
 
 ---
 
@@ -72,7 +72,7 @@ Integrate Cloudflare AI Gateway for LLM chat completions and add image generatio
 - ✅ Working LLM models: Llama 3.1 8B Instruct, Llama 2 7B Chat, Mistral 7B Instruct
 - ✅ Streaming format: Server-Sent Events (SSE) with `data: {"response":"..."}\n\n` format
 - ✅ Working image models: Stable Diffusion XL Lightning (PNG binary), Flux-1 Schnell (JSON with base64)
-- ✅ Images stored with prompts, timestamps, and base64 data for display and download
-- ✅ Complete navigation flow: Home → Chat or Generate Images → History grid
-- ✅ **Streaming fully debugged**: Handles None chunks, empty arrays `[]`, [DONE] markers, and non-dict JSON responses
-- ✅ **All backend errors resolved**: Chat streaming is production-ready with comprehensive error handling
+- ✅ Tool calling implemented with generate_image function
+- ✅ Chat messages support inline image display with image_b64 field
+- 🔄 **Next**: Enhance tool use UI with better visual feedback and error handling
+- ⚠️ **Note**: Cloudflare Workers AI tool use support is working - tool_calls are returned in SSE stream

@@ -10,6 +10,8 @@ class Message(TypedDict):
     role: str
     content: str
     is_initial_greeting: Optional[bool]
+    image_b64: Optional[str]
+    tool_call_info: Optional[str]
 
 
 CLOUDFLARE_MODELS = {
@@ -98,8 +100,33 @@ class ChatState(rx.State):
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        data = {"prompt": prompt, "stream": True}
+        tools = [
+            {
+                "name": "generate_image",
+                "description": "Generate an image based on a user prompt.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "The prompt for the image to be generated.",
+                        },
+                        "style": {
+                            "type": "string",
+                            "description": "The style of the image, e.g., 'photorealistic', 'anime'.",
+                        },
+                    },
+                    "required": ["prompt"],
+                },
+            }
+        ]
+        api_messages = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in self.messages[:-1]
+        ]
+        data = {"messages": api_messages, "stream": True, "tools": tools}
         accumulated_content = ""
+        tool_calls = []
         try:
             with requests.post(
                 url, headers=headers, json=data, stream=True, timeout=120
@@ -116,13 +143,21 @@ class ChatState(rx.State):
                                 json_data = json.loads(json_str)
                                 if not isinstance(json_data, dict):
                                     continue
-                                text_chunk = json_data.get("response")
-                                accumulated_content += text_chunk or ""
-                                async with self:
-                                    if not self.is_streaming:
-                                        break
-                                    self.messages[-1]["content"] = accumulated_content
-                            except json.JSONDecodeError as e:
+                                if "response" in json_data:
+                                    text_chunk = json_data.get("response")
+                                    accumulated_content += text_chunk or ""
+                                    async with self:
+                                        if not self.is_streaming:
+                                            break
+                                        self.messages[-1]["content"] = (
+                                            accumulated_content
+                                        )
+                                elif "tool_calls" in json_data:
+                                    tool_calls = json_data.get("tool_calls", [])
+                                    async with self:
+                                        self.is_streaming = False
+                                    break
+                            except json.JSONDecodeError:
                                 logging.exception(
                                     f"JSON Decode Error for line: {json_str}"
                                 )
@@ -143,3 +178,39 @@ class ChatState(rx.State):
         finally:
             async with self:
                 self.is_streaming = False
+            if tool_calls:
+                yield ChatState.execute_tool_call(tool_calls[0])
+
+    @rx.event(background=True)
+    async def execute_tool_call(self, tool_call: dict):
+        from app.states.image_state import ImageGenerationState, GeneratedImage
+        import time
+
+        tool_name = tool_call.get("name")
+        arguments = tool_call.get("arguments", {})
+        prompt = arguments.get("prompt")
+        style = arguments.get("style", "photorealistic")
+        if tool_name == "generate_image" and prompt:
+            async with self:
+                self.messages[-1]["content"] = f"✨ Generating an image for: *{prompt}*"
+                self.messages[-1]["tool_call_info"] = (
+                    f"Tool: generate_image, Prompt: {prompt}, Style: {style}"
+                )
+            yield
+            async with self:
+                image_state = await self.get_state(ImageGenerationState)
+                image_b64 = await image_state._generate_image_from_prompt(prompt, style)
+                if image_b64:
+                    self.messages[-1]["image_b64"] = image_b64
+                    self.messages[-1]["content"] = "Here is the generated image:"
+                else:
+                    self.messages[-1]["content"] = (
+                        "Sorry, I couldn't generate the image."
+                    )
+        else:
+            async with self:
+                self.messages[-1]["content"] = (
+                    "Sorry, I couldn't process the tool call."
+                )
+        async with self:
+            self.is_streaming = False

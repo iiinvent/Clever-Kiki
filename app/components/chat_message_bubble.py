@@ -47,6 +47,17 @@ def ai_message_bubble(message: Message) -> rx.Component:
                     ),
                 ),
                 rx.cond(
+                    message.get("image_b64") != None,
+                    rx.el.div(
+                        rx.el.img(
+                            src=message["image_b64"],
+                            class_name="rounded-lg mt-2 max-w-full h-auto",
+                        ),
+                        class_name="mt-2",
+                    ),
+                    None,
+                ),
+                rx.cond(
                     is_initial == False,
                     rx.el.div(
                         rx.el.div(
