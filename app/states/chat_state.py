@@ -114,9 +114,12 @@ class ChatState(rx.State):
                                 async with self:
                                     if not self.is_streaming:
                                         break
-                                    if self.messages[-1]["content"] is None:
-                                        self.messages[-1]["content"] = ""
-                                    self.messages[-1]["content"] += text_chunk
+                                    current_content = (
+                                        self.messages[-1].get("content") or ""
+                                    )
+                                    self.messages[-1]["content"] = (
+                                        current_content + text_chunk
+                                    )
                             except json.JSONDecodeError as e:
                                 logging.exception(f"Error decoding JSON: {e}")
                                 pass
