@@ -156,30 +156,57 @@ class ChatState(rx.State):
                                     text_chunk = json_data.get("response", "")
                                     if not text_chunk:
                                         continue
-                                    if in_tool_call:
-                                        if "</tool_call>" in text_chunk:
-                                            in_tool_call = False
-                                            parts = text_chunk.split("</tool_call>", 1)
-                                            tool_call_str += parts[0]
-                                            try:
-                                                tool_call_dict = ast.literal_eval(
-                                                    tool_call_str.strip()
-                                                )
-                                                tool_call_completed = True
-                                            except Exception as e:
-                                                logging.exception(
-                                                    f"Failed to parse tool call with ast: {tool_call_str}"
-                                                )
-                                            break
-                                        else:
-                                            tool_call_str += text_chunk
-                                    elif "<tool_call>" in text_chunk:
+                                    accumulated_content += text_chunk
+                                    if "<tool_call>" in accumulated_content and (
+                                        not in_tool_call
+                                    ):
                                         in_tool_call = True
-                                        parts = text_chunk.split("<tool_call>", 1)
-                                        accumulated_content += parts[0]
-                                        tool_call_str += parts[1]
-                                    else:
-                                        accumulated_content += text_chunk
+                                        start_index = accumulated_content.find(
+                                            "<tool_call>"
+                                        )
+                                        text_before_tool_call = accumulated_content[
+                                            :start_index
+                                        ].strip()
+                                        async with self:
+                                            self.messages[-1]["content"] = (
+                                                text_before_tool_call
+                                            )
+                                            self.messages[-1]["tool_call_status"] = (
+                                                "loading"
+                                            )
+                                        accumulated_content = accumulated_content[
+                                            start_index:
+                                        ]
+                                    if (
+                                        in_tool_call
+                                        and "</tool_call>" in accumulated_content
+                                    ):
+                                        start_index = accumulated_content.find(
+                                            "<tool_call>"
+                                        ) + len("<tool_call>")
+                                        end_index = accumulated_content.find(
+                                            "</tool_call>"
+                                        )
+                                        tool_call_str = accumulated_content[
+                                            start_index:end_index
+                                        ].strip()
+                                        try:
+                                            tool_call_dict = ast.literal_eval(
+                                                tool_call_str
+                                            )
+                                            tool_call_completed = True
+                                        except (ValueError, SyntaxError) as e:
+                                            logging.exception(
+                                                f"Failed to parse tool call string: {tool_call_str} with error: {e}"
+                                            )
+                                            async with self:
+                                                self.messages[-1]["content"] = (
+                                                    "Sorry, there was an error processing the tool call."
+                                                )
+                                                self.messages[-1][
+                                                    "tool_call_status"
+                                                ] = "error"
+                                        break
                                     if not in_tool_call:
                                         async with self:
                                             if not self.is_streaming:
