@@ -96,26 +96,35 @@ class ChatState(rx.State):
         tools = [
             {
                 "name": "generate_image",
-                "description": "Generate an image based on a user prompt.",
+                "description": "ALWAYS use this tool when the user explicitly asks to generate, create, draw, or make an image/picture. Examples: 'generate an image of a cat', 'create a picture of a sunset'. NEVER use this for greetings, questions, or general conversation.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "prompt": {
                             "type": "string",
-                            "description": "The prompt for the image to be generated.",
+                            "description": "A detailed, descriptive prompt for the image to be generated. This should capture all the user's requirements.",
                         },
                         "style": {
                             "type": "string",
-                            "description": "The style of the image, e.g., 'photorealistic', 'anime'.",
+                            "description": "The artistic style of the image, inferred from the user's prompt, e.g., 'photorealistic', 'anime', 'sketch'. Defaults to 'photorealistic' if not specified.",
                         },
                     },
                     "required": ["prompt"],
                 },
             }
         ]
-        api_messages = [
-            {"role": "system", "content": "You are a friendly assistant"}
-        ] + [
+        system_prompt = """
+You are a friendly and helpful assistant. Your primary function is to engage in natural conversation, answer questions, and assist with tasks. 
+
+IMPORTANT: You have a special tool called `generate_image`.
+
+- ONLY use the `generate_image` tool if the user explicitly asks you to generate, create, draw, make, or show an image, picture, or visual.
+- For example, if the user says 'generate an image of a dog' or 'draw me a picture of a mountain', you MUST use the tool.
+- For ANY other type of message (like greetings, questions, or general chat), you MUST respond as a normal conversational assistant and DO NOT use any tools.
+
+Your default behavior is to chat. Only use tools when explicitly commanded to.
+"""
+        api_messages = [{"role": "system", "content": system_prompt}] + [
             {"role": msg["role"], "content": msg["content"]}
             for msg in self.messages[:-1]
         ]
