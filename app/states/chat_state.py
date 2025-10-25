@@ -99,6 +99,7 @@ class ChatState(rx.State):
             "Content-Type": "application/json",
         }
         data = {"prompt": prompt, "stream": True}
+        accumulated_content = ""
         try:
             with requests.post(
                 url, headers=headers, json=data, stream=True, timeout=120
@@ -111,22 +112,18 @@ class ChatState(rx.State):
                             try:
                                 json_data = json.loads(line_str[6:])
                                 text_chunk = json_data.get("response", "")
+                                accumulated_content += text_chunk
                                 async with self:
                                     if not self.is_streaming:
                                         break
-                                    current_content = (
-                                        self.messages[-1].get("content", "") or ""
-                                    )
-                                    self.messages[-1]["content"] = (
-                                        current_content + text_chunk
-                                    )
+                                    self.messages[-1]["content"] = accumulated_content
                             except json.JSONDecodeError as e:
                                 logging.exception(f"Error decoding JSON: {e}")
-                                pass
+                                continue
         except requests.exceptions.RequestException as e:
             logging.exception(f"Error: {e}")
+            error_detail = f"API Error: {str(e)}"
             async with self:
-                error_detail = f"API Error: {str(e)}"
                 self.messages[-1]["content"] = (
                     f"Sorry, I encountered an error. {error_detail}"
                 )

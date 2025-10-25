@@ -40,12 +40,30 @@ Integrate Cloudflare AI Gateway for LLM chat completions and add image generatio
 
 ---
 
+## Phase 4: Debug and Refactor Chat Streaming ✅
+- [x] Debug TypeError in streaming concatenation (None type error)
+- [x] Refactor streaming logic to use accumulator pattern instead of direct message mutation
+- [x] Add comprehensive null checks throughout streaming code
+- [x] Simplify async state updates for better reliability
+- [x] Test refactored streaming logic to ensure no None errors
+- [x] Verify UI functionality after refactoring
+
+**Completed**: Successfully refactored the chat streaming logic to eliminate the `TypeError: can only concatenate str (not "NoneType") to str` error. The new approach uses an accumulator variable (`accumulated_content`) to build the response incrementally, then updates the message atomically within async context blocks. This prevents race conditions and ensures the content field is never None during streaming.
+
+**Key improvements:**
+- Accumulator pattern: Chunks are accumulated in a local variable before updating state
+- Atomic updates: Message content is set in one operation within `async with self:` blocks
+- Better error handling: Added fallback logic if content becomes None
+- Simplified logic: Removed complex nested state access patterns
+
+---
+
 ## Notes
 - ✅ Using Cloudflare AI Gateway endpoint: `https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model}`
 - ✅ Environment variables configured: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_AI_GATEWAY, CLOUDFLARE_AI_GATEWAY_TOKEN
 - ✅ Working LLM models: Llama 3.1 8B Instruct, Llama 2 7B Chat, Mistral 7B Instruct
 - ✅ Streaming format: Server-Sent Events (SSE) with `data: {"response":"..."}\n\n` format
 - ✅ Working image models: Stable Diffusion XL Lightning (PNG binary), Flux-1 Schnell (JSON with base64)
-- ✅ Image generation uses same endpoint pattern but returns binary image data or JSON with base64
 - ✅ Images stored with prompts, timestamps, and base64 data for display and download
 - ✅ Complete navigation flow: Home → Chat or Generate Images → History grid
+- ✅ Streaming bug fixed: Using accumulator pattern to prevent None concatenation errors
