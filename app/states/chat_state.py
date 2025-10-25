@@ -167,6 +167,9 @@ class ChatState(rx.State):
                                         text_before_tool_call = accumulated_content[
                                             :start_index
                                         ].strip()
+                                        accumulated_content = accumulated_content[
+                                            start_index:
+                                        ]
                                         async with self:
                                             self.messages[-1]["content"] = (
                                                 text_before_tool_call
@@ -174,9 +177,6 @@ class ChatState(rx.State):
                                             self.messages[-1]["tool_call_status"] = (
                                                 "loading"
                                             )
-                                        accumulated_content = accumulated_content[
-                                            start_index:
-                                        ]
                                     if (
                                         in_tool_call
                                         and "</tool_call>" in accumulated_content
@@ -228,15 +228,15 @@ class ChatState(rx.State):
                 )
                 self.error_message = error_detail
         except Exception as e:
-            logging.exception(f"Error: {e}")
+            logging.exception(f"An unexpected error occurred: {e}")
             async with self:
                 self.messages[-1]["content"] = f"An unexpected error occurred: {str(e)}"
                 self.error_message = str(e)
         finally:
             async with self:
                 self.is_streaming = False
-            if tool_call_dict:
-                yield ChatState.execute_tool_call(tool_call_dict)
+        if tool_call_dict:
+            yield ChatState.execute_tool_call(tool_call_dict)
 
     @rx.event(background=True)
     async def execute_tool_call(self, tool_call: dict):
