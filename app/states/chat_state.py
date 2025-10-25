@@ -253,27 +253,24 @@ class ChatState(rx.State):
                 self.messages[-1]["content"] = ""
                 self.messages[-1]["tool_call_status"] = "loading"
                 self.messages[-1]["image_b64"] = None
-            await self._run_image_generation(prompt, style)
+                image_state = await self.get_state(ImageGenerationState)
+            image_b64, error = await image_state._generate_image_from_prompt(
+                prompt, style
+            )
+            async with self:
+                if image_b64:
+                    self.messages[-1]["image_b64"] = image_b64
+                    self.messages[-1]["content"] = "Here is the generated image:"
+                    self.messages[-1]["tool_call_status"] = "success"
+                else:
+                    self.messages[-1]["content"] = (
+                        f"Sorry, I couldn't generate the image. Reason: {error}"
+                    )
+                    self.messages[-1]["tool_call_status"] = "error"
         else:
             logging.error(f"Invalid tool call received: {tool_call}")
             async with self:
                 self.messages[-1]["content"] = (
                     "Sorry, I received an invalid request to generate an image."
-                )
-                self.messages[-1]["tool_call_status"] = "error"
-
-    async def _run_image_generation(self, prompt: str, style: str):
-        from app.states.image_state import ImageGenerationState
-
-        image_state = await self.get_state(ImageGenerationState)
-        image_b64, error = await image_state._generate_image_from_prompt(prompt, style)
-        async with self:
-            if image_b64:
-                self.messages[-1]["image_b64"] = image_b64
-                self.messages[-1]["content"] = "Here is the generated image:"
-                self.messages[-1]["tool_call_status"] = "success"
-            else:
-                self.messages[-1]["content"] = (
-                    f"Sorry, I couldn't generate the image. Reason: {error}"
                 )
                 self.messages[-1]["tool_call_status"] = "error"
