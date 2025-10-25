@@ -15,18 +15,14 @@ class GeneratedImage(TypedDict):
 
 
 IMAGE_MODELS = {
-    "Stable Diffusion XL Base": "@cf/stabilityai/stable-diffusion-xl-base-1.0",
     "Stable Diffusion XL Lightning": "@cf/bytedance/stable-diffusion-xl-lightning",
     "Flux-1 Schnell": "@cf/black-forest-labs/flux-1-schnell",
-    "Phoenix-1.0": "@cf/leonardo/phoenix-1.0",
-    "Lucid-Origin": "@cf/leonardo/lucid-origin",
-    "Dreamshaper-8-LCM": "@cf/lykon/dreamshaper-8-lcm",
 }
 
 
 class ImageGenerationState(rx.State):
     is_generating: bool = False
-    selected_model: str = "Flux-1 Schnell"
+    selected_model: str = "Stable Diffusion XL Lightning"
     image_history: list[GeneratedImage] = []
     error_message: str = ""
     selected_style: str = "photorealistic"
@@ -74,15 +70,16 @@ class ImageGenerationState(rx.State):
             self.error_message = ""
         yield
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+        gateway_id = os.getenv("CLOUDFLARE_AI_GATEWAY")
         token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
-        if not all([account_id, token]):
+        if not all([account_id, gateway_id, token]):
             async with self:
                 self.error_message = "API credentials not configured."
                 self.is_generating = False
             return
         width, height = map(int, self.selected_size.split("x"))
         model_id = IMAGE_MODELS.get(self.selected_model)
-        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model_id}"
+        url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
         headers = {"Authorization": f"Bearer {token}"}
         data = {
             "prompt": full_prompt,
@@ -129,14 +126,15 @@ class ImageGenerationState(rx.State):
     ) -> tuple[str | None, str | None]:
         full_prompt = f"{prompt}, {style} style"
         account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+        gateway_id = os.getenv("CLOUDFLARE_AI_GATEWAY")
         token = os.getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
-        if not all([account_id, token]):
+        if not all([account_id, gateway_id, token]):
             error_msg = "API credentials not configured for image generation."
             logging.error(error_msg)
             return (None, error_msg)
         width, height = map(int, self.selected_size.split("x"))
         model_id = IMAGE_MODELS.get(self.selected_model)
-        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model_id}"
+        url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
         headers = {"Authorization": f"Bearer {token}"}
         data = {
             "prompt": full_prompt,

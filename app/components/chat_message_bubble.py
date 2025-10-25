@@ -41,22 +41,7 @@ def _tool_call_ui(message: Message) -> rx.Component:
                     ),
                     class_name="mt-2",
                 ),
-                rx.cond(
-                    message.get("tool_call_status") == "error",
-                    rx.el.div(
-                        rx.icon(
-                            "flag_triangle_right", class_name="text-red-400 w-6 h-6"
-                        ),
-                        rx.el.p(
-                            message.get(
-                                "tool_call_error", "An unknown error occurred."
-                            ),
-                            class_name="text-red-400 text-sm ml-2",
-                        ),
-                        class_name="mt-3 p-4 flex justify-center items-center bg-red-900/30 rounded-lg",
-                    ),
-                    None,
-                ),
+                None,
             ),
         )
     )
@@ -64,7 +49,6 @@ def _tool_call_ui(message: Message) -> rx.Component:
 
 def ai_message_bubble(message: Message) -> rx.Component:
     is_initial = message["is_initial_greeting"]
-    has_tool_call = message.get("tool_call_status") != None
     return rx.el.div(
         rx.el.div(
             rx.cond(
@@ -79,19 +63,15 @@ def ai_message_bubble(message: Message) -> rx.Component:
                 ),
             ),
             rx.el.div(
-                rx.cond(
-                    message["content"] != "",
-                    rx.el.p(
-                        message["content"],
-                        class_name=rx.cond(
-                            is_initial,
-                            "font-medium text-neutral-100 whitespace-pre-wrap break-words leading-relaxed",
-                            "text-neutral-200 whitespace-pre-wrap break-words leading-relaxed",
-                        ),
+                rx.el.p(
+                    message["content"],
+                    class_name=rx.cond(
+                        is_initial,
+                        "font-medium text-neutral-100 whitespace-pre-wrap break-words leading-relaxed",
+                        "text-neutral-200 whitespace-pre-wrap break-words leading-relaxed",
                     ),
-                    None,
                 ),
-                rx.cond(has_tool_call, _tool_call_ui(message), None),
+                _tool_call_ui(message),
                 rx.cond(
                     is_initial == False,
                     rx.el.div(
@@ -119,9 +99,9 @@ def ai_message_bubble(message: Message) -> rx.Component:
                         ),
                         class_name="flex flex-wrap items-center justify-between mt-3 w-full gap-2",
                     ),
-                    None,
+                    rx.el.div(),
                 ),
-                class_name="bg-[#2A2B2E] p-3 rounded-lg shadow flex-grow min-w-0 space-y-3",
+                class_name="bg-[#2A2B2E] p-3 rounded-lg shadow flex-grow min-w-0",
             ),
             class_name="flex items-start w-full",
         ),
