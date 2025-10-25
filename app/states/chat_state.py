@@ -250,7 +250,7 @@ class ChatState(rx.State):
 
         logging.info(f"Executing tool call: {tool_call}")
         tool_name = tool_call.get("name")
-        arguments = tool_call.get("arguments", {})
+        arguments = tool_call.get("parameters", {})
         prompt = arguments.get("prompt")
         style = arguments.get("style", "photorealistic")
         if tool_name == "generate_image" and prompt:
