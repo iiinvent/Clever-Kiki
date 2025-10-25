@@ -41,7 +41,22 @@ def _tool_call_ui(message: Message) -> rx.Component:
                     ),
                     class_name="mt-2",
                 ),
-                None,
+                rx.cond(
+                    message.get("tool_call_status") == "error",
+                    rx.el.div(
+                        rx.icon(
+                            "flag_triangle_right", class_name="text-red-400 w-6 h-6"
+                        ),
+                        rx.el.p(
+                            message.get(
+                                "tool_call_error", "An unknown error occurred."
+                            ),
+                            class_name="text-red-400 text-sm ml-2",
+                        ),
+                        class_name="mt-3 p-4 flex justify-center items-center bg-red-900/30 rounded-lg",
+                    ),
+                    None,
+                ),
             ),
         )
     )

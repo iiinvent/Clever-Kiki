@@ -129,95 +129,38 @@ Remember: Always talk to the user about what they said before taking any action.
         ]
         data = {"messages": api_messages, "stream": True, "tools": tools}
         accumulated_content = ""
-        tool_call_dict = None
-        in_tool_call = False
-        tool_call_str = ""
-        tool_call_completed = False
+        tool_calls = []
         try:
             with requests.post(
                 url, headers=headers, json=data, stream=True, timeout=120
             ) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
-                    if tool_call_completed:
-                        break
-                    if line:
-                        line_str = line.decode("utf-8")
-                        if line_str.startswith("data: "):
-                            json_str = line_str[6:].strip()
-                            if not json_str or json_str == "[DONE]":
+                    if not line:
+                        continue
+                    line_str = line.decode("utf-8")
+                    if line_str.startswith("data: "):
+                        json_str = line_str[6:].strip()
+                        if json_str == "[DONE]":
+                            break
+                        try:
+                            json_data = json.loads(json_str)
+                            if not isinstance(json_data, dict):
                                 continue
-                            try:
-                                json_data = json.loads(json_str)
-                                if not isinstance(json_data, dict):
-                                    continue
-                                if "response" in json_data:
-                                    text_chunk = json_data.get("response", "")
-                                    if not text_chunk:
-                                        continue
-                                    accumulated_content += text_chunk
-                                    if "<tool_call>" in accumulated_content and (
-                                        not in_tool_call
-                                    ):
-                                        in_tool_call = True
-                                        start_index = accumulated_content.find(
-                                            "<tool_call>"
-                                        )
-                                        text_before_tool_call = accumulated_content[
-                                            :start_index
-                                        ].strip()
-                                        accumulated_content = accumulated_content[
-                                            start_index:
-                                        ]
-                                        async with self:
-                                            self.messages[-1]["content"] = (
-                                                text_before_tool_call
-                                            )
-                                            self.messages[-1]["tool_call_status"] = (
-                                                "loading"
-                                            )
-                                    if (
-                                        in_tool_call
-                                        and "</tool_call>" in accumulated_content
-                                    ):
-                                        start_index = accumulated_content.find(
-                                            "<tool_call>"
-                                        ) + len("<tool_call>")
-                                        end_index = accumulated_content.find(
-                                            "</tool_call>"
-                                        )
-                                        tool_call_str = accumulated_content[
-                                            start_index:end_index
-                                        ].strip()
-                                        try:
-                                            tool_call_dict = ast.literal_eval(
-                                                tool_call_str
-                                            )
-                                            tool_call_completed = True
-                                        except (ValueError, SyntaxError) as e:
-                                            logging.exception(
-                                                f"Failed to parse tool call string: {tool_call_str} with error: {e}"
-                                            )
-                                            async with self:
-                                                self.messages[-1]["content"] = (
-                                                    "Sorry, there was an error processing the tool call."
-                                                )
-                                                self.messages[-1][
-                                                    "tool_call_status"
-                                                ] = "error"
+                            if "response" in json_data:
+                                text_chunk = json_data.get("response", "")
+                                accumulated_content += text_chunk
+                                async with self:
+                                    if not self.is_streaming:
                                         break
-                                    if not in_tool_call and (not tool_call_completed):
-                                        async with self:
-                                            if not self.is_streaming:
-                                                break
-                                            self.messages[-1]["content"] = (
-                                                accumulated_content
-                                            )
-                            except json.JSONDecodeError:
-                                logging.exception(
-                                    f"JSON Decode Error for line: {json_str}"
-                                )
-                                continue
+                                    self.messages[-1]["content"] = accumulated_content
+                            if "tool_calls" in json_data and json_data["tool_calls"]:
+                                tool_calls.extend(json_data["tool_calls"])
+                                async with self:
+                                    self.messages[-1]["tool_call_status"] = "loading"
+                        except json.JSONDecodeError:
+                            logging.exception(f"JSON Decode Error for line: {json_str}")
+                            continue
         except requests.exceptions.RequestException as e:
             logging.exception(f"Error: {e}")
             error_detail = f"API Error: {str(e)}"
@@ -234,38 +177,20 @@ Remember: Always talk to the user about what they said before taking any action.
         finally:
             async with self:
                 self.is_streaming = False
-        if (
-            not tool_call_dict
-            and '"name"' in accumulated_content
-            and ('"parameters"' in accumulated_content)
-        ):
-            try:
-                tool_call_dict = ast.literal_eval(accumulated_content.strip())
-            except (ValueError, SyntaxError) as e:
-                logging.exception(f"Final tool call parse failed: {e}")
-                tool_call_dict = None
-        if (
-            tool_call_dict
-            and isinstance(tool_call_dict, dict)
-            and ("name" in tool_call_dict)
-        ):
-            yield ChatState.execute_tool_call(tool_call_dict)
+        if tool_calls:
+            yield ChatState.execute_tool_call(tool_calls[0])
 
     @rx.event(background=True)
     async def execute_tool_call(self, tool_call: dict):
         from app.states.image_state import ImageGenerationState
-        import time
 
         logging.info(f"Executing tool call: {tool_call}")
         tool_name = tool_call.get("name")
-        arguments = tool_call.get("parameters", {})
+        arguments = tool_call.get("arguments", {})
         prompt = arguments.get("prompt")
         style = arguments.get("style", "photorealistic")
         if tool_name == "generate_image" and prompt:
             async with self:
-                self.messages[-1]["content"] = ""
-                self.messages[-1]["tool_call_status"] = "loading"
-                self.messages[-1]["image_b64"] = None
                 image_state = await self.get_state(ImageGenerationState)
                 image_state.selected_model = "Flux-1 Schnell"
             image_b64, error = await image_state._generate_image_from_prompt(
@@ -274,17 +199,15 @@ Remember: Always talk to the user about what they said before taking any action.
             async with self:
                 if image_b64:
                     self.messages[-1]["image_b64"] = image_b64
-                    self.messages[-1]["content"] = "Here is the generated image:"
                     self.messages[-1]["tool_call_status"] = "success"
                 else:
-                    self.messages[-1]["content"] = (
-                        f"Sorry, I couldn't generate the image. Reason: {error}"
-                    )
                     self.messages[-1]["tool_call_status"] = "error"
+                    self.messages[-1]["tool_call_error"] = (
+                        f"Failed to generate image: {error}"
+                    )
         else:
-            logging.error(f"Invalid tool call received: {tool_call}")
+            error_msg = f"Invalid tool call received: {tool_call}"
+            logging.error(error_msg)
             async with self:
-                self.messages[-1]["content"] = (
-                    "Sorry, I received an invalid request to generate an image."
-                )
                 self.messages[-1]["tool_call_status"] = "error"
+                self.messages[-1]["tool_call_error"] = error_msg
