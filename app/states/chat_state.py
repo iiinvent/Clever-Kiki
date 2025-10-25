@@ -148,26 +148,6 @@ class ChatState(rx.State):
                                     if not text_chunk:
                                         continue
                                     accumulated_content += text_chunk
-                                    try:
-                                        if (
-                                            '"name"' in accumulated_content
-                                            and '"parameters"' in accumulated_content
-                                        ):
-                                            potential_tool_call = ast.literal_eval(
-                                                accumulated_content.strip()
-                                            )
-                                            if (
-                                                isinstance(potential_tool_call, dict)
-                                                and "name" in potential_tool_call
-                                            ):
-                                                tool_call_dict = potential_tool_call
-                                                tool_call_completed = True
-                                                accumulated_content = ""
-                                                break
-                                    except (ValueError, SyntaxError) as e:
-                                        logging.exception(
-                                            f"Error parsing potential tool call: {e}"
-                                        )
                                     if "<tool_call>" in accumulated_content and (
                                         not in_tool_call
                                     ):
