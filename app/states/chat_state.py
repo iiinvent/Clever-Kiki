@@ -153,6 +153,13 @@ class ChatState(rx.State):
                                 json_data = json.loads(json_str)
                                 if not isinstance(json_data, dict):
                                     continue
+                                if json_data.get("type") == "tool_use":
+                                    tool_call_completed = True
+                                    tool_call_dict = {
+                                        "name": json_data.get("name"),
+                                        "arguments": json_data.get("input", {}),
+                                    }
+                                    break
                                 if "response" in json_data:
                                     text_chunk = json_data.get("response", "")
                                     if not text_chunk:
@@ -246,7 +253,7 @@ class ChatState(rx.State):
 
         logging.info(f"Executing tool call: {tool_call}")
         tool_name = tool_call.get("name")
-        arguments = tool_call.get("arguments", {})
+        arguments = tool_call.get("arguments", tool_call.get("parameters", {}))
         prompt = arguments.get("prompt")
         style = arguments.get("style", "photorealistic")
         if tool_name == "generate_image" and prompt:
