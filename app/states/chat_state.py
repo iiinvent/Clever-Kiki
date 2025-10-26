@@ -253,7 +253,17 @@ class ChatState(rx.State):
 
         logging.info(f"Executing tool call: {tool_call}")
         tool_name = tool_call.get("name")
-        arguments = tool_call.get("arguments", tool_call.get("parameters", {}))
+        arguments = tool_call.get("arguments", tool_call.get("parameters"))
+        if arguments is None:
+            logging.error(
+                f"Invalid tool call received: missing 'arguments' or 'parameters'. Full call: {tool_call}"
+            )
+            async with self:
+                self.messages[-1]["content"] = (
+                    "Sorry, I received an invalid request to generate an image (missing arguments)."
+                )
+                self.messages[-1]["tool_call_status"] = "error"
+            return
         prompt = arguments.get("prompt")
         style = arguments.get("style", "photorealistic")
         if tool_name == "generate_image" and prompt:
@@ -276,7 +286,9 @@ class ChatState(rx.State):
                     )
                     self.messages[-1]["tool_call_status"] = "error"
         else:
-            logging.error(f"Invalid tool call received: {tool_call}")
+            logging.error(
+                f"Invalid tool call received or prompt missing. Full call: {tool_call}"
+            )
             async with self:
                 self.messages[-1]["content"] = (
                     "Sorry, I received an invalid request to generate an image."
