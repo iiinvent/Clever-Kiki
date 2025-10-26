@@ -99,6 +99,8 @@ class ImageGenerationState(rx.State):
                 content_type = response.headers.get("Content-Type", "")
                 if "image/png" in content_type:
                     image_b64 = f"data:image/png;base64,{base64.b64encode(response.content).decode('utf-8')}"
+                elif "image/jpeg" in content_type:
+                    image_b64 = f"data:image/jpeg;base64,{base64.b64encode(response.content).decode('utf-8')}"
                 elif "application/json" in content_type:
                     json_response = response.json()
                     image_b64 = (
@@ -154,6 +156,8 @@ class ImageGenerationState(rx.State):
                 content_type = response.headers.get("Content-Type", "")
                 if "image/png" in content_type:
                     image_b64 = f"data:image/png;base64,{base64.b64encode(response.content).decode('utf-8')}"
+                elif "image/jpeg" in content_type:
+                    image_b64 = f"data:image/jpeg;base64,{base64.b64encode(response.content).decode('utf-8')}"
                 elif "application/json" in content_type:
                     json_response = response.json()
                     image_b64 = (
