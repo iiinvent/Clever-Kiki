@@ -15,14 +15,18 @@ class GeneratedImage(TypedDict):
 
 
 IMAGE_MODELS = {
-    "Stable Diffusion XL Lightning": "@cf/bytedance/stable-diffusion-xl-lightning",
+    "Leonardo Phoenix 1.0": "@cf/leonardo/phoenix-1.0",
+    "Lucid Origin": "@cf/leonardo/lucid-origin",
     "Flux-1 Schnell": "@cf/black-forest-labs/flux-1-schnell",
+    "Dreamshaper 8 LCM": "@cf/lykon/dreamshaper-8-lcm",
+    "Stable Diffusion XL Base 1.0": "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+    "Stable Diffusion XL Lightning": "@cf/bytedance/stable-diffusion-xl-lightning",
 }
 
 
 class ImageGenerationState(rx.State):
     is_generating: bool = False
-    selected_model: str = "Stable Diffusion XL Lightning"
+    selected_model: str = "Leonardo Phoenix 1.0"
     image_history: list[GeneratedImage] = []
     error_message: str = ""
     selected_style: str = "photorealistic"
@@ -132,8 +136,8 @@ class ImageGenerationState(rx.State):
             error_msg = "API credentials not configured for image generation."
             logging.error(error_msg)
             return (None, error_msg)
+        model_id = IMAGE_MODELS.get("Leonardo Phoenix 1.0", "@cf/leonardo/phoenix-1.0")
         width, height = map(int, self.selected_size.split("x"))
-        model_id = IMAGE_MODELS.get(self.selected_model)
         url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
         headers = {"Authorization": f"Bearer {token}"}
         data = {
