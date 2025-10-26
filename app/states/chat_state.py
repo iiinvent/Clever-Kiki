@@ -29,7 +29,7 @@ CLOUDFLARE_MODELS = {
 class ChatState(rx.State):
     messages: list[Message] = []
     is_streaming: bool = False
-    selected_model: str = "Llama 3.1 8B Instruct Fast"
+    selected_model: str = "Hermes 2 Pro Mistral 7B"
     error_message: str = ""
 
     @rx.var
