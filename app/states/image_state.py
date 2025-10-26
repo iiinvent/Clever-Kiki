@@ -85,12 +85,9 @@ class ImageGenerationState(rx.State):
         model_id = IMAGE_MODELS.get(self.selected_model)
         url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
         headers = {"Authorization": f"Bearer {token}"}
-        data = {
-            "prompt": full_prompt,
-            "num_steps": self.quality_steps,
-            "width": width,
-            "height": height,
-        }
+        data = {"prompt": full_prompt, "width": width, "height": height}
+        if "leonardo" not in self.selected_model.lower():
+            data["num_steps"] = self.quality_steps
         try:
             with requests.post(
                 url, headers=headers, json=data, timeout=120
@@ -142,12 +139,9 @@ class ImageGenerationState(rx.State):
         width, height = map(int, self.selected_size.split("x"))
         url = f"https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/workers-ai/{model_id}"
         headers = {"Authorization": f"Bearer {token}"}
-        data = {
-            "prompt": full_prompt,
-            "num_steps": 20,
-            "width": width,
-            "height": height,
-        }
+        data = {"prompt": full_prompt, "width": width, "height": height}
+        if "leonardo" not in model_id.lower():
+            data["num_steps"] = 20
         try:
             with requests.post(
                 url, headers=headers, json=data, timeout=120
